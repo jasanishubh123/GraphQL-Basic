@@ -21,6 +21,14 @@
             updateComment(id:ID!,text:String!):Comment!
         }
 
+        type Subscription{
+            count:Int!
+            comment(postId:ID!):CommentSubscriptionPayload!
+            post:PostSubscriptionPayload!
+            
+
+        }
+
         input updatePostInput{
             title:String
             body:String
@@ -78,4 +86,20 @@
             text:String!
             user:User!
             post:Post!
+        }
+
+        type PostSubscriptionPayload{
+            mutation:MutationType!,
+            data:Post!
+        }
+
+        type CommentSubscriptionPayload{
+            mutation:MutationType!
+            data:Comment!
+        }
+
+        enum MutationType{
+            CREATED
+            UPDATED
+            DELETED
         }
