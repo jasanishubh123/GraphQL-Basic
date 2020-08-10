@@ -1,7 +1,7 @@
 import { GraphQLServer } from 'graphql-yoga'
+import {v4 as uuid} from 'uuid'
 
-
-const users=[
+let users=[
     {
         id: '123423',
         name: 'Jay',
@@ -17,7 +17,7 @@ const users=[
 
 ]
 
-const posts=[
+let posts=[
     {
         id: "01",
         title: "My GraphQL third",
@@ -42,7 +42,7 @@ const posts=[
 
 ]
 
-const comments=[
+let comments=[
     {
         id:"001",
         text:"Nice Picssss 1",
@@ -94,6 +94,35 @@ const typeDefs = `
             allUser(query:String):[User!]!
             comments:[Comment!]!
         }
+
+        type Mutation  {
+            createUser(data:createUserInput):User!
+            createPost(data:createPostInput):Post!
+            createComment(data:createCommentInput):Comment!
+            deleteUser(id:ID!):User!
+            deletePost(id:ID!):Post!
+            deleteComment(id:ID!):Comment!
+        }
+
+        input createUserInput{
+            name:String!
+            email:String!
+            age:Int
+        }
+
+        input createPostInput{
+            title:String
+            body:String!
+            published:Boolean!
+            author:ID!
+        }
+
+        input createCommentInput{
+            text:String!
+            user:ID!
+            post:ID!
+        }
+
         type User {  
             id:ID!
             name:String!
@@ -153,7 +182,7 @@ const resolvers = {
         },
         sum: (parent, args, ctx, info) => {
             if (args.a && args.b) {
-                return args.a + args.b
+                return args.a + args.b 
             } else {
                 return 0
             }
@@ -231,6 +260,139 @@ const resolvers = {
                 return post.id===parent.post
             })
         }
+    },
+    Mutation:{
+        createUser:(parent, args, ctx, info)=>{
+            const emailTaken = users.some((user)=>{
+                return user.email ===args.data.email
+            })
+            if(emailTaken){
+                throw  new Error('Email Taken')
+            }
+
+           
+
+            const user={
+                id:uuid(),
+               
+                ...args.data
+            }
+            
+            users.push(user)
+            return user
+        },
+        createPost:(parent, args, ctx, info)=>{
+
+
+            const UserExist=users.some((user)=>{
+                return user.id===args.data.author
+            })
+
+            console.log("User Exist "+UserExist)
+            if(!UserExist){
+                throw  new Error('User not Exist')
+
+            }
+
+            console.log("Create POST")
+                const post={
+                    id:uuid(),
+                   ...args.data
+                }
+                posts.push(post)
+                return post
+            
+
+        },
+        createComment:(parent, args, ctx, info)=>{
+
+            const UserExist=users.some((user)=>{
+                return user.id===args.data.user
+            })
+            const PostExist=posts.some((post)=>{
+               return post.id===args.data.post
+            })
+
+            console.log("User "+UserExist +" "+" Post Exist "+PostExist)
+
+            if(!UserExist || !PostExist){
+                throw new Error("User Or Post not Exist")
+              
+            }
+            
+            const comment={
+                id:uuid(),
+               ...args.data
+            }
+
+            comments.push(comment)
+
+            return comment
+
+        },
+        deleteUser:(parent, args, ctx, info)=>{
+            const userIndex= users.findIndex((user)=>{
+                return user.id===args.id
+            })
+            
+            if(userIndex===-1){
+                 throw new Error("User not found")
+            }
+
+           const deletedUser = users.splice(userIndex,1);
+
+           posts=posts.filter((post)=>{
+                const match=post.author===args.id
+
+                if(match){
+                    comments=comments.filter((comment)=>{
+                        return comment.post !==post.id
+                    })
+                }
+
+                return !match
+
+           })
+
+           comments=comments.filter((comment)=> comment.user !==args.id)
+
+           return deletedUser[0]
+
+        },
+        deletePost:(parent, args, ctx, info)=>{
+            const PostIndex=posts.findIndex((post)=>{
+                return post.id===args.id
+            })
+            if(PostIndex===-1){
+                throw new Error("Post not found")
+            }
+
+            const deletedPost=posts.splice(PostIndex,1);
+
+            comments=comments.filter((com)=>{
+                return com.post !== args.id
+            })
+
+            return deletedPost[0]
+
+
+        },
+        deleteComment:(parent, args, ctx, info)=>{
+
+            const commentIndex=comments.findIndex((com)=>{
+                return com.id===args.id
+            })
+
+            if(commentIndex===-1){
+                throw new Error("Comments Not Found")
+            }
+
+            const deletedComment=comments.splice(commentIndex,1)
+
+            return deletedComment[0]
+
+        }
+
     }
 
 }
