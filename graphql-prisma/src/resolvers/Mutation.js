@@ -1,281 +1,256 @@
-import {v4 as uuid} from 'uuid'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import getUserId from '../utils/getUserId'
+import generateToken from '../utils/generateToken'
+import hashPassword from '../utils/hashPassword'
 
-const Mutation={
-    createUser:(parent, args, ctx, info)=>{
-        const emailTaken = ctx.db.users.some((user)=>{
-            return user.email ===args.data.email
-        })
-        if(emailTaken){
-            throw  new Error('Email Taken')
-        }
+// const token=jwt.sign({
+//     id:46
+// },'mysecret')
+// console.log(token)
 
-        
+// // const decode=jwt.decode(token)
 
-        const user={
-            id:uuid(),
-           
-            ...args.data
-        }
-        
-        ctx.db.users.push(user)
-        return user
-    },
-    createPost:(parent, args, {db,pubsub}, info)=>{
+// // console.log(decode)
 
+// const verify= jwt.verify("sassasaasasasasas",'mysecret')
 
-        const UserExist=db.users.some((user)=>{
-            return user.id===args.data.author
-        })
+// console.log(verify)
 
-        console.log("User Exist "+UserExist)
-        if(!UserExist){
-            throw  new Error('User not Exist')
+const Mutation = {
 
-        }
-
-        console.log("Create POST")
-            const post={
-                id:uuid(),
-               ...args.data
-            }
-            db.posts.push(post)
-            pubsub.publish(`post`,
-            {
-                post:{
-                    mutation:'CREATED',
-                    data:post
-                }
-            })
-            return post
-        
-
-    },
-    createComment:(parent, args, {db,pubsub}, info)=>{
-
-        const UserExist=db.users.some((user)=>{
-            return user.id===args.data.user
-        })
-        const PostExist=db.posts.some((post)=>{
-           return post.id===args.data.post
-        })
-
-        console.log("User "+UserExist +" "+" Post Exist "+PostExist)
-
-        if(!UserExist || !PostExist){
-            throw new Error("User Or Post not Exist")
-          
-        }
-        
-        const comment={
-            id:uuid(),
-           ...args.data
-        }
-
-        db.comments.push(comment)
-        pubsub.publish(`comment ${args.data.post}`,{
-            comment:{
-                mutation:'CREATED',
-                data:comment
-            }
-
-        })
-        return comment
-
-    },
-    deleteUser:(parent, args, ctx, info)=>{
-        const userIndex= ctx.db.users.findIndex((user)=>{
-            return user.id===args.id
-        })
-        
-        if(userIndex===-1){
-             throw new Error("User not found")
-        }
-
-       const deletedUser = ctx.db.users.splice(userIndex,1);
-
-       ctx.db.posts=ctx.db.posts.filter((post)=>{
-            const match=post.author===args.id
-
-            if(match){
-                ctx.db.comments=ctx.db.comments.filter((comment)=>{
-                    return comment.post !==post.id
-                })
-            }
-
-            return !match
-
-       })
-
-       ctx.db.comments=ctx.db.comments.filter((comment)=> comment.user !==args.id)
-
-       return deletedUser[0]
-
-    },
-    deletePost:(parent, args, {db,pubsub}, info)=>{
-        const PostIndex=db.posts.findIndex((post)=>{
-            return post.id===args.id
-        })
-        if(PostIndex===-1){
-            throw new Error("Post not found")
-        }
-
-        const deletedPost=db.posts.splice(PostIndex,1);
-
-        db.comments=db.comments.filter((com)=>{
-            return com.post !== args.id
-        })
-
-        pubsub.publish(`post`,{
-            post:{
-                mutation:'DELETED',
-                data:deletedPost[0]
+    Login:async(parent, args, { prisma }, info)=>{
+        const user= await prisma.query.user({
+            where:{
+                email:args.data.email
             }
         })
-
-        return deletedPost[0]
-
-
-    },
-    deleteComment:(parent, args, {db,pubsub}, info)=>{
-
-        const commentIndex=db.comments.findIndex((com)=>{
-            return com.id===args.id
-        })
-
-        if(commentIndex===-1){
-            throw new Error("Comments Not Found")
-        }
-
-        const deletedComment=db.comments.splice(commentIndex,1)
-
-        pubsub.publish(`comment ${deletedComment[0].post}`,{
-            comment:{
-                mutation:'DELETED',
-                data:deletedComment[0]
-            }
-
-        })
-
-        return deletedComment[0]
-
-    },
-    updateUser:(parent, args, {db}, info)=>{
-
-        const {id,data}=args
-
-        const user=db.users.find((user)=>{
-            return user.id===id
-        })
-
         if(!user){
             throw new Error("User not found")
         }
 
-        if(typeof data.email === 'string'){
-            const emailTaken=db.users.some((user)=>{
-                if(user.id!==id){
-                    return user.email===data.email
-                }
-                
-            })
+        const isMatch = await bcrypt.compare(args.data.password,user.password)
 
-            if(emailTaken){
-                throw new Error("Email Already Exist")
-            }
-            user.email=data.email
+        if(!isMatch){
+            throw new Error("Unable to login")
         }
 
-        if(typeof data.name==='string')
-        {
-            user.name=data.name
+        return{
+            user,
+            token:generateToken(user.id)
         }
-
-        if(typeof data.age !== 'undefined'){
-            user.age=data.age
-        }
-
-        return user
 
 
     },
-    updatePost:(parent, args, {db,pubsub}, info)=>{
-        const {id,data}=args
+
+
+    createUser: async (parent, args, { prisma }, info) => {
+
+        const pass= await hashPassword(args.data.password)
+        const user = await prisma.mutation.createUser({ 
+            
+            data: {
+                ...args.data,
+                password:pass
+                
+            }
+
+        })
+
+        return {
+            user,
+            token:generateToken(user.id)
+        }
+    },
+    createPost:async (parent, args, { prisma ,req}, info) => {
+
+        //get header value and validate token
+
+        const userId=getUserId(req)
+
+       
+        return await prisma.mutation.createPost({
+            data:{
+                title:args.data.title,
+                body:args.data.body,
+                published:args.data.published,
+                author:{
+                    connect:{
+                        id:userId
+                    }
+                }
+            }
+        },info)
+
+    },
+    createComment: async (parent, args, { req, prisma }, info) => {
+
+        const userId=getUserId(req)
+
+        const  postExist=await prisma.exists.Post({
+            id:args.data.post,
+            published:true
+        })
+
+        if(!postExist)
+        {
+            throw new Error("unable to create comment")
+        }
+        return await prisma.mutation.createComment({
+            data:{
+                text:args.data.text,
+                author:{
+                    connect:{
+                        id:userId
+                    }
+                },
+                post:{
+                    connect:{
+                        id:args.data.post
+                    }
+                }
+            }
+        },info)
+
+    },
+    deleteUser: async (parent, args, {prisma,req}, info) => {
+
+        const userId=req.getUserId(req)
+        return prisma.mutation.deleteUser({
+            where:{
+                id:userId
+            }
+        },info)
+
+
+
+
+    },
+    deletePost:async (parent, args, { prisma,req }, info) => {
+       
+        const userId=  getUserId(req)
+        const postExist=await prisma.exists.Post({
+            id:args.id,
+            author:{
+                id:userId
+            }
+        })
+
+        if(!postExist){
+            throw new Error('Unable to delete post')
+        }
+
+        return prisma.mutation.deletePost({
+            where:{
+                id:args.id
+            }
+        },info)
+
+    },
+    deleteComment: async (parent, args, { prisma,req }, info) => {
+
+        const userId=getUserId(req)
+
+        const CommentExist=await prisma.exists.Comment({
+            id:args.id,
+            author:{
+                id:userId
+            }  
+        })
+
+        if(!CommentExist){
+
+            throw new Error("unable to delete Comments")
+        }
+
+        return prisma.mutation.deleteComment({
+            where:{
+                id:args.id
+            }
+        },info)
+        
+    },
+    updateUser: async (parent, args, { prisma,req }, info) => {
+
+
+
+        if(typeof args.data.password==='string'){
+            args.data.password=await hashPassword(args.data.password)
+        }
+       
+ 
        
 
-        const post = db.posts.find((post)=>{
-                return post.id===id
+       return  prisma.mutation.updateUser({
+             where:{
+                 id:userId
+             },
+
+             data:args.data
+         },info) 
+
+   
+    },
+    updatePost: async (parent, args, { prisma ,req}, info) => {
+       
+        const userId=getUserId(req)
+        
+        const postExist=await prisma.exists.Post({
+            id:args.id,
+            author:{
+                id:userId
+            }
         })
-        const originalPost={...post}
 
-        if(!post){
-            throw new Error("Post Not Found")
+        const isPublished= await prisma.exists.Post({
+            id:args.id,published:true
+        })
+
+        if(!postExist){
+            throw new Error("unable tp update the post")
         }
 
-        if(typeof data.title==='string'){
-            post.title=data.title
-        }
-        if(typeof data.body==='string'){
-            post.body=data.body
-        }
-        if(typeof data.published==='boolean'){
-            post.published=data.published
-
-            if(originalPost.published && !post.published){
-                pubsub.publish(`post`,{
+        if(isPublished && args.data.published===false){
+            await prisma.mutation.deleteManyComments({
+                where:{
                     post:{
-                        mutation:'DELETED',
-                        data:originalPost
+                        id:args.id
                     }
-                })
-            }
-            else if(!originalPost.published && post.published){
-                
-                pubsub.publish(`post`,{
-                    post:{
-                        mutation:'CREATED',
-                        data:originalPost
-                    }
-                })
-
-            }
-
-        }else if(post.published){
-            pubsub.publish(`post`,{
-                post:{
-                    mutation:'UPDATED',
-                    data:post
                 }
             })
         }
 
-        return post
+        return await prisma.mutation.updatePost({
+            where:{
+                id:args.id
+            },
+            data:args.data
+        },info)
 
     },
-    updateComment:(parent, args, {db,pubsub}, info)=>{
-        const {id,text}=args
-        const comment=db.comments.find((com)=>{
-            return com.id===id
-        })
-        if(!comment){
-            throw new Error("Comment not found")
-        }
-        if(typeof text==='string'){
+    updateComment: async(parent, args, { db, req }, info) => {
+        
+        
+        const userId=getUserId(req)
 
-            comment.text=text
-
-        }
-
-        pubsub.publish(`comment ${comment.post}`,{
-            comment:{
-                mutation:'UPDATED',
-                data:comment
-            }
-
+        const CommentExist=await prisma.exists.Comment({
+            id:args.id,
+            author:{
+                id:userId
+            }  
         })
 
-        return comment
+        if(!CommentExist){
 
+            throw new Error("unable to update Comments")
+        }
 
+        return await prisma.mutation.updateComment({
+            where:{
+                id:args.id
+            },
+            data:args.data
+        },info)
     }
 
 }

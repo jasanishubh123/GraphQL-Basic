@@ -3,13 +3,13 @@ let users=[
         id: '123423',
         name: 'Jay',
         email: "jay@gmail.com",
-        age: 23
+        
     },
     {
         id: '22121',
         name: 'Shivam',
         email: "shivam@gmail.com",
-        age: 22
+        
     }
 
 ]

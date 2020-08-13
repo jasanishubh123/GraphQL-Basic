@@ -1,21 +1,38 @@
-const  Query= {
-    me: () => {
-        return {
-            id: '123423',
-            name: 'Jay',
-            email: "jay@gmail.com",
-            age: 23
+import getUserId from "../utils/getUserId"
 
-        }
+const  Query= {
+    me:async (parent, args, {req,prisma}, info) => {
+        
+        const userId=getUserId(req)
+
+        return prisma.query.user({
+            where:{
+                id:userId
+            }
+        })
+
+
     },
-    post: () => {
-        return {
-            id: "1221",
-            title: "My Post",
-            body: "First Post",
-            published: false,
-            author:"123423"
+    post: async (parent, args, {req,prisma}, info) => {
+
+        const userId=getUserId(req,false)
+        const posts=await prisma.query.posts({
+            where:{
+                id:args.id,
+                OR:[{
+                    author:{
+                        id:userId
+                    }
+                }]
+            }
+        },info)
+
+        if(posts.length===0){
+            throw new Error("Posts not found")
         }
+
+        return post[0]
+   
     },
     greeting: (parent, args, ctx, info) => {
         if (args.name && args.position)
@@ -32,36 +49,78 @@ const  Query= {
     grades: (parent, args, ctx, info) => {
         return ["Shubham", "Jasani", "Okay"]
     },
-    allUser: (parent, args, ctx, info) => {
+    allUser: (parent, args, {db,prisma}, info) => {
        
+        const opArgs={}
+
         if(args.query){
-           return ctx.db.users.filter((user)=>{
-               return  user.name.toLowerCase().includes(args.query.toLowerCase())
-            })
-        }else
-        return ctx.db.users
+            opArgs.where={
+                OR:[{
+                    name_contains:args.query
+                }
+            ]
+            }
+        }
+
+       return prisma.query.users(opArgs,info)
+
 
         
 
     },
-    allPost: (parent, args, ctx, info) => {
+    allPost: (parent, args, {prisma}, info) => {
        
-        console.log(ctx)
+   
+
+        const opArgs={
+            where:{
+                published:true
+            }
+        }
 
         if(args.query){
-           return ctx.db.posts.filter((post)=>{
-               return  post.title.toLowerCase().includes(args.query.toLowerCase()) ||
-               post.body.toLowerCase().includes(args.query.toLowerCase())
-            })
-        }else
-        return ctx.db.posts
+            opArgs.where.OR=[{
+                title_contains:args.query
+            },{
+                body_contains:args.query
+            }
+        ]
+        }
+
+
+        return prisma.query.posts(opArgs,info)
 
         
 
     },
-    comments:(parent, args, ctx, info)=>{
-        return ctx.db.comments
-    }
+    comments:(parent, args, {prisma}, info)=>{
+
+            return prisma.query.comments(null,info)
+        // return ctx.db.comments
+    },
+    myPost:(parent, args, {prisma,req}, info)=>{
+
+        const userId=getUserId(req)
+
+        const opArg={
+            where:{
+                author:{
+                    id:userId
+                }
+            }
+        }
+
+        if(args.query){
+            opArg.where.OR=[{
+                title_contains:args.query
+            },{
+                body_contains:args.query
+            }]
+        }
+
+        return prisma.query.posts(opArg,info)
+
+    }   
 
 
 

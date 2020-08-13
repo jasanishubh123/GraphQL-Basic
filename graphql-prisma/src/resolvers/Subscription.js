@@ -1,4 +1,5 @@
 
+import getUserId from '../utils/getUserId'
 const Subscription={
         count:{
             subscribe:(parent,args,{pubsub},info)=>{
@@ -13,23 +14,39 @@ const Subscription={
             }
         },
         comment:{
-            subscribe:(parent,{postId},{pubsub,db},info)=>{
-                const post=db.posts.find((post)=>{
-                    return post.id===postId
-                })
-                if(!post){
-                    throw new Error("Post not found")
-                }
-
-                return pubsub.asyncIterator(`comment ${postId}`)
+            subscribe:(parent,{postId},{prisma},info)=>{
+               
+                
+                return prisma.Subscription.comment(null,info)
             }
         },
         post:{
-            subscribe:(parent,args,{pubsub,db},info)=>{
+            subscribe:(parent,args,{prisma},info)=>{
 
               
-                return pubsub.asyncIterator(`post`)
+                return prisma.Subscription.post({
+                    where:{
+                       node:{
+                           published:true
+                       } 
+                    }
+                },info)
 
+            }
+        },
+        myPost:{
+            subscribe:(parent,args,{req,prisma},info)=>{
+                const userId=getUserId(req)
+
+                return prisma.Subscription.post({
+                    where:{
+                        node:{
+                            author:{
+                                id:id
+                            }
+                        }
+                    }
+                })
             }
         }
 }
