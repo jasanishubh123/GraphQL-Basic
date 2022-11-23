@@ -1,6 +1,9 @@
-endpoint: http://localhost:4466
+endpoint: ${env:PRISMA_ENDPOINT}
+# endpoint: https://blogging-app-0d85d37d0c.herokuapp.com/shubh-blogging-app/prod
+
 datamodel: datamodel.graphql
-secret: thisismysupersecrettext
+secret: ${env:PRISMA_SECRET}
+# thisismysupersecrettext
 # generate:
 #     - generator: graphql-schema
 #       output: ./src/generated/prisma.graphql

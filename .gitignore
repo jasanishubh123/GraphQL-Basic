@@ -1,0 +1,4 @@
+apollo-client/node_modules
+express-graphql/node_modules
+graphql-basic/node_modules
+graphql-prisma/node_modules

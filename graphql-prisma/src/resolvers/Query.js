@@ -51,7 +51,12 @@ const  Query= {
     },
     allUser: (parent, args, {db,prisma}, info) => {
        
-        const opArgs={}
+        const opArgs={
+            first:args.first,
+            skip:args.skip,
+            after:args.after,
+            orderBy:args.orderBy
+        }
 
         if(args.query){
             opArgs.where={
@@ -75,7 +80,11 @@ const  Query= {
         const opArgs={
             where:{
                 published:true
-            }
+            },
+            first:args.first,
+            skip:args.skip,
+            after:args.after,
+            orderBy:args.orderBy
         }
 
         if(args.query){
@@ -95,7 +104,14 @@ const  Query= {
     },
     comments:(parent, args, {prisma}, info)=>{
 
-            return prisma.query.comments(null,info)
+        const opArgs={
+          
+            first:args.first,
+            skip:args.skip,
+            after:args.after,
+            orderBy:args.orderBy
+        }
+            return prisma.query.comments(opArgs,info)
         // return ctx.db.comments
     },
     myPost:(parent, args, {prisma,req}, info)=>{
@@ -107,7 +123,10 @@ const  Query= {
                 author:{
                     id:userId
                 }
-            }
+            },
+            first:args.first,
+            skip:args.skip,
+            after:args.after
         }
 
         if(args.query){

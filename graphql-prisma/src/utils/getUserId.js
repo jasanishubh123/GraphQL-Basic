@@ -7,7 +7,7 @@ const getUserId=(req,requireAuth=true)=>{
 
     if(header){
         const token=header.replace('Bearer ','')
-        const decode=jwt.verify(token,'secretofmine')
+        const decode=jwt.verify(token,process.env.JWT_SECRET)
         return decode.userId
     }
 

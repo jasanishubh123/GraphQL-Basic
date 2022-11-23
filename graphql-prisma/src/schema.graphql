@@ -1,13 +1,14 @@
+        # import UserOrderByInput,PostOrderByInput,CommentOrderByInput from './generated/prisma.graphql'
         type Query {
             greeting(name: String , position:String):String!
             me: User!
             post(id:ID!):Post!
             sum(a:Float!,b:Float!):Float!
             grades:[String!]!
-            allPost(query:String):[Post!]!
-            myPost(query:String):[Post!]!
-            allUser(query:String):[User!]!
-            comments:[Comment!]!
+            allPost(query:String,first:Int,skip:Int,after:String):[Post!]!
+            myPost(query:String,first:Int,skip:Int,after:String,orderBy:PostOrderByInput):[Post!]!
+            allUser(query:String,first:Int,skip:Int,after:String,orderBy:UserOrderByInput):[User!]!
+            comments(first:Int,skip:Int,after:String,orderBy:CommentOrderByInput):[Comment!]!
         }
 
         type Mutation  {
@@ -77,6 +78,9 @@
             password:String!
             posts:[Post!]!
             comments:[Comment!]!
+            updatedAt:String!
+            createdAt:String!
+
 
         }
 
@@ -87,7 +91,8 @@
             published:Boolean!
             author:User!
             comments:[Comment!]!
-
+            updatedAt:String!
+            createdAt:String!
         }
 
         type Comment {
@@ -95,6 +100,8 @@
             text:String!
             author:User!
             post:Post!
+            updatedAt:String!
+            createdAt:String!
         }
 
         type PostSubscriptionPayload{

@@ -13,3 +13,5 @@
 /benchmarkDist
 /npm
 /deno
+/config
+/dist

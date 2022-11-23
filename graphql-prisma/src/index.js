@@ -1,3 +1,5 @@
+
+import '@babel/polyfill/noConflict'
 import {GraphQLServer , PubSub} from 'graphql-yoga'
 import db from './db'
 import {resolvers ,fragmentReplacement } from './resolvers/index'
@@ -20,7 +22,7 @@ const server = new GraphQLServer({
     fragmentReplacement
 })
 
-server.start(() => {
+server.start({port:process.env.PORT || 4000},() => {
     console.log("Server Start")
 })
 

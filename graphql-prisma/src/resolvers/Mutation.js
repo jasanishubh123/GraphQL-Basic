@@ -172,7 +172,7 @@ const Mutation = {
     },
     updateUser: async (parent, args, { prisma,req }, info) => {
 
-
+        const userId=getUserId(req)
 
         if(typeof args.data.password==='string'){
             args.data.password=await hashPassword(args.data.password)
